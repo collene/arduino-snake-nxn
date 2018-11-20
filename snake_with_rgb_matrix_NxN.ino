@@ -18,7 +18,9 @@ Adafruit_NeoPixel matrix = Adafruit_NeoPixel(256, PIN, NEO_GRB + NEO_KHZ800);
 uint32_t RED = matrix.Color(255, 0, 0);
 uint32_t GREEN = matrix.Color(0, 255, 0);
 uint32_t BLUE = matrix.Color(0, 0, 255);
-uint32_t CLEAR = matrix.Color(0, 0, 0);  
+uint32_t CLEAR = matrix.Color(0, 0, 0); 
+uint32_t PURPLE = matrix.Color(255, 0, 255); 
+uint32_t YELLOW = matrix.Color(255, 255, 0);
 
 struct point {
   int x;
@@ -41,7 +43,7 @@ int numApplesEaten = 0;
 
 void setup() { 
   matrix.begin();  
-  matrix.setBrightness(32);
+  matrix.setBrightness(15);
   matrix.show();
   randomSeed(analogRead(0));
 
@@ -53,7 +55,11 @@ void defineBoard() {
   for(int i = 0; i < COLS; i++) {
     board[0][i] = 1;    
     board[ROWS - 1][i] = 1;
-  }
+  }  
+  generateRandomBoard();
+}
+
+void generateRandomBoard() {
   for(int i = 1; i < ROWS - 1; i++) {
     for(int j = 0; j < COLS; j++) {
       if(j == 0 || j == (COLS - 1)) {
@@ -62,6 +68,25 @@ void defineBoard() {
         board[i][j] = 0;
       }
     }
+  }
+  // 20 random pixels set, but make sure that it won't cause the player to lose (diagonal pixels)
+  for(int i = 0; i < 20; i++) {
+    bool found = false;
+    int x = random(1, ROWS - 1);
+    int y = random(1, COLS - 1);
+    while(!found) {          
+      if(!boardContainsCoordinates(x, y)
+         && !boardContainsCoordinates(x - 1, y - 1)         
+         && !boardContainsCoordinates(x + 1, y - 1)
+         && !boardContainsCoordinates(x - 1, y + 1) 
+         && !boardContainsCoordinates(x + 1, y + 1)){
+         found = true;
+      } else {
+        x = random(1, ROWS - 1);
+        y = random(1, COLS - 1);
+      }
+    }
+    board[x][y] = 1;
   }
 }
 
@@ -75,23 +100,31 @@ void startGame() {
 }
 
 void resetGameVariables() {  
-  // start the player in a random spot
-  playerHead.x = random(1, ROWS - 1);
-  playerHead.y = random(1, COLS - 1);
-  int startDirection = random(0, 2);
-  
-  if(startDirection == 0) {
-    if(playerHead.y < COLS / 2) {
-      playerDirection = RIGHT;
+  generateRandomBoard();
+  bool found = false;  
+  while(!found) {
+    // start the player in a random spot
+    playerHead.x = random(1, ROWS - 1);
+    playerHead.y = random(1, COLS - 1);
+    int startDirection = random(0, 2);
+    
+    if(startDirection == 0) {
+      if(playerHead.y < COLS / 2) {
+        playerDirection = RIGHT;
+      } else {
+        playerDirection = LEFT;
+      }
     } else {
-      playerDirection = LEFT;
+      if(playerHead.x < ROWS / 2) {
+        playerDirection = DOWN;
+      } else {
+        playerDirection = UP;
+      }  
     }
-  } else {
-    if(playerHead.x < ROWS / 2) {
-      playerDirection = DOWN;
-    } else {
-      playerDirection = UP;
-    }  
+
+    if(playerHas5Moves()) {
+      found = true;
+    }
   }
 
   generateApple();
@@ -104,13 +137,39 @@ void resetGameVariables() {
   gameRate = 300;  
   numApplesEaten = 0;
 }
-
+bool playerHas5Moves() {
+  for(int i = 0; i < 5; i++) {
+    switch(playerDirection) {
+      case RIGHT:
+        if(board[playerHead.x][playerHead.y + i] == 1) {
+          return false;
+        }
+        break;
+      case LEFT:
+        if(board[playerHead.x][playerHead.y - i] == 1) {
+          return false;
+        }
+        break;
+      case UP:
+        if(board[playerHead.x - i][playerHead.y] == 1) {
+          return false;
+        }
+        break;
+      case DOWN:
+        if(board[playerHead.x + i][playerHead.y] == 1) {
+          return false;
+        }
+        break;
+    }
+  }
+  return true;
+}
 void generateApple() {
   bool found = false;
   while(!found) {    
     apple.x = random(1, ROWS - 1);
     apple.y = random(1, COLS - 1);
-    if(!playerContainsCoordinates(apple.x, apple.y)) {       
+    if(!playerContainsCoordinates(apple.x, apple.y) && !boardContainsCoordinates(apple.x, apple.y)) {       
       found = true;
     }
   }  
@@ -123,13 +182,11 @@ bool playerContainsCoordinates(int x, int y) {
   }
   return false;
 }
+bool boardContainsCoordinates(int x, int y) {
+  return board[x][y] == 1;
+}
 
 void drawPlayer() {  
-  for(int i = 1; i < ROWS - 1; i++) {
-    for(int j = 1; j < COLS - 1; j++) {     
-      matrix.setPixelColor(convertToMatrixPoint(i, j), CLEAR);
-    }
-  }
   for(int i = 0; i < playerLength; i++) {        
     matrix.setPixelColor(convertToMatrixPoint(player[i].x, player[i].y), BLUE);
   }  
@@ -139,10 +196,15 @@ void drawBoard() {
     for(int j = 0; j < COLS; j++) {
       if(board[i][j] == 1) {        
         matrix.setPixelColor(convertToMatrixPoint(i, j), GREEN);     
+      } else {
+        matrix.setPixelColor(convertToMatrixPoint(i, j), CLEAR);
       }
     }
   }  
   matrix.setPixelColor(convertToMatrixPoint(0, 0), BLUE);   // identify the bottom left pixel 
+  // identify the matrix start pixels and direction
+  matrix.setPixelColor(0, PURPLE);
+  matrix.setPixelColor(1, YELLOW);
 }
 void drawApple() {
   matrix.setPixelColor(convertToMatrixPoint(apple.x, apple.y), RED);
@@ -157,15 +219,15 @@ void loop() {
 
   if(deltax > deltay) {
     if(x < 480) {
-      playerDirection = RIGHT;
+      playerDirection = DOWN;
     } else if(x > 540) {
-      playerDirection = LEFT;
+      playerDirection = UP;
     }
   } else {
     if(y < 475) {
-      playerDirection = DOWN;
+      playerDirection = RIGHT;
     } else if(y > 535) {
-      playerDirection = UP;
+      playerDirection = LEFT;
     }
   }  
       
@@ -220,6 +282,7 @@ void detectAppleEaten() {
 }
 
 void updateBoard() {  
+  drawBoard();
   drawPlayer();
   drawApple();
   matrix.show();
@@ -238,8 +301,8 @@ void gameOver() {
 
 int convertToMatrixPoint(int i, int j) {
   if(i % 2 == 0) {
-    return ((ROWS - 1 - i) * COLS) + j;
+    return (COLS * i) + (COLS - 1) - j;
   } else {
-    return ((ROWS - 1 - i) * COLS) + (COLS - 1 - j);    
+    return (COLS * i) + j;
   }
 }

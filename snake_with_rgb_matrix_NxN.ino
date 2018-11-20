@@ -52,6 +52,7 @@ void setup() {
 }
 
 void defineBoard() {  
+  // draw the outer board
   for(int i = 0; i < COLS; i++) {
     board[0][i] = 1;    
     board[ROWS - 1][i] = 1;
@@ -60,6 +61,7 @@ void defineBoard() {
 }
 
 void generateRandomBoard() {
+  // clear the existing board first
   for(int i = 1; i < ROWS - 1; i++) {
     for(int j = 0; j < COLS; j++) {
       if(j == 0 || j == (COLS - 1)) {
@@ -102,6 +104,7 @@ void startGame() {
 void resetGameVariables() {  
   generateRandomBoard();
   bool found = false;  
+  // generate a random spot for the user to start, and a random direction
   while(!found) {
     // start the player in a random spot
     playerHead.x = random(1, ROWS - 1);
@@ -137,6 +140,7 @@ void resetGameVariables() {
   gameRate = 300;  
   numApplesEaten = 0;
 }
+// make sure with the random start that the player has a few moves to react
 bool playerHas5Moves() {
   for(int i = 0; i < 5; i++) {
     switch(playerDirection) {
@@ -166,6 +170,7 @@ bool playerHas5Moves() {
 }
 void generateApple() {
   bool found = false;
+  // make sure that the apple doesn't end up on a board coordinate or on top of the player
   while(!found) {    
     apple.x = random(1, ROWS - 1);
     apple.y = random(1, COLS - 1);
@@ -201,7 +206,8 @@ void drawBoard() {
       }
     }
   }  
-  matrix.setPixelColor(convertToMatrixPoint(0, 0), BLUE);   // identify the bottom left pixel 
+  // identify the bottom left pixel by painting it blue
+  matrix.setPixelColor(convertToMatrixPoint(0, 0), BLUE);   
   // identify the matrix start pixels and direction
   matrix.setPixelColor(0, PURPLE);
   matrix.setPixelColor(1, YELLOW);
@@ -217,6 +223,7 @@ void loop() {
   float deltax = abs(510 - x);
   float deltay = abs(505 - y);
 
+  // detect if the player's movement is more likely x or y direction
   if(deltax > deltay) {
     if(x < 480) {
       playerDirection = DOWN;
